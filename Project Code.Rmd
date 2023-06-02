@@ -1,0 +1,838 @@
+---
+title: "Project Stuff"
+author: "Jon Matkin"
+date: '2023-02-28'
+output: html_document
+---
+
+```{r}
+lg_data <- read.csv('2020_JP_TS_Level4.csv')
+head(lg_data)
+```
+```{r}
+LG_mar_apr_data <- read.csv("JP_mar_apr_data.csv")
+```
+
+```{r}
+precip_data <- read.csv("nasa_precip_data_mar_apr.csv")
+head(precip_data)
+```
+```{r}
+nw_precip_data <- read.csv("North West Precip Data.csv")
+ne_precip_data <- read.csv("North East Precip Data.csv")
+sw_precip_data <- read.csv("South West Precip data.csv")
+se_precip_data <- read.csv("South East Precip Data.csv")
+```
+
+```{r}
+head(nw_precip_data)
+head(ne_precip_data)
+head(sw_precip_data)
+head(se_precip_data)
+```
+
+```{r}
+hist(nw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf, main="Northwest Region Distribution", xlab="Precipitation (kg m-2)")
+hist(ne_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf, main="Northeast Region Distribution", xlab="Precipitation (kg m-2)")
+hist(sw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf, main="Southwest Region Distribution", xlab="Precipitation (kg m-2)")
+hist(se_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf, main="Southeast Region Distribution", xlab="Precipitation (kg m-2)")
+```
+Unsurprisingly the data looks very similar for each quadrant
+
+```{r}
+sw_precip_scaled <- scale(sw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf)
+sw_precip_scaled <- rnorm(sw_precip_scaled)
+se_precip_scaled <- scale(se_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf)
+se_precip_scaled <- rnorm(se_precip_scaled)
+nw_precip_scaled <- scale(nw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf)
+nw_precip_scaled <- rnorm(nw_precip_scaled)
+ne_precip_scaled <- scale(ne_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf)
+ne_precip_scaled <- rnorm(ne_precip_scaled)
+
+scaled_precip  <- data.frame(sw = sw_precip_scaled,
+                             se = se_precip_scaled,
+                             nw = nw_precip_scaled,
+                             ne = ne_precip_scaled)
+
+sw_se <- t.test(scaled_precip$sw - scaled_precip$se, mu=0)
+sw_nw <- t.test(scaled_precip$sw - scaled_precip$nw, mu=0)
+sw_ne <- t.test(scaled_precip$sw - scaled_precip$ne, mu=0)
+se_nw <- t.test(scaled_precip$se - scaled_precip$nw, mu=0)
+se_ne <- t.test(scaled_precip$se - scaled_precip$ne, mu=0)
+nw_ne <- t.test(scaled_precip$nw - scaled_precip$ne, mu=0)
+
+sw_se
+sw_nw
+sw_ne
+se_nw
+se_ne
+nw_ne
+
+```
+
+
+I think it would be better to split the data into each site and do analysis from there
+Then we may be able to draw conclusions separately by site. Kind of ties into how I 
+want to look at location
+
+```{r}
+unique(LG_mar_apr_data$Site_Name)
+```
+Set up the dataframes based on location
+
+```{r}
+library(dplyr)
+lg_east <- LG_mar_apr_data %>% filter(Site_Name == "TS_East")
+lg_english <- LG_mar_apr_data %>% filter(Site_Name == "TS_English")
+lg_finkle <- LG_mar_apr_data %>% filter(Site_Name == "TS_Finkle")
+lg_hague <- LG_mar_apr_data %>% filter(Site_Name == "TS_Hague")
+lg_indian <- LG_mar_apr_data %>% filter(Site_Name == "TS_Indian")
+lg_northwestbay <- LG_mar_apr_data %>% filter(Site_Name == "TS_NorthwestBay")
+lg_outlet <- LG_mar_apr_data %>% filter(Site_Name == "TS_Outlet")
+lg_polehill <- LG_mar_apr_data %>% filter(Site_Name == "TS_PoleHill")
+lg_shlevingrock <- LG_mar_apr_data %>% filter(Site_Name == "TS_ShelvingRock")
+lg_sucker <- LG_mar_apr_data %>% filter(Site_Name == "TS_Sucker")
+lg_sunset <- LG_mar_apr_data %>% filter(Site_Name == "TS_Sunset")
+lg_west <- LG_mar_apr_data %>% filter(Site_Name == "TS_West")
+# Need sunset and west
+```
+
+Given the scope for this project and prior examination of sites, we will start by using only 3:
+East
+Outlet
+West
+
+Here is some exploratory analysis on those sensors
+```{r}
+head(lg_east)
+#str(lg_east)
+dim(lg_east)
+```
+```{r}
+# NA analysis
+# Want to drop cols with all values of NA
+
+#summary(lg_east)
+cols_drop_east <- c("Turbidity_Water_EXO","Stage_Water_WaterLog","Temperature_Water_WaterLog","Chla_Water_EXO","Flow_Water_SL","Level_Water_SL","PC_Water_EXO","Temperature_Water_SL","Conductivity.46cm_Soil_HydraProbe","Moisture.46cm_Soil_HydraProbe","Temperature.46cm_Soil_HydraProbe","Flow_Water_IQ","Stage_Water_IQ","Temperature_Water_IQ","Time","X","X.1")
+
+east <- lg_east[,!(names(lg_east) %in% cols_drop_east)]
+head(east)
+```
+Now need to do the same thing for outlet and west
+
+```{r}
+#summary(lg_outlet)
+
+drop_cols_outlet <- c("Conductivity_Soil_HydraProbe","Moisture_Soil_HydraProbe","Stage_Water_CS451","Temperature_Soil_HydraProbe","Temperature_Water_CS451","Stage_Water_WaterLog","Temperature_Water_WaterLog","Conductivity.46cm_Soil_HydraProbe","Moisture.46cm_Soil_HydraProbe","Temperature.46cm_Soil_HydraProbe","Flow_Water_IQ","Stage_Water_IQ","Temperature_Water_IQ", "X","X.1","Time")
+
+outlet <- lg_outlet[,!(names(lg_outlet) %in% drop_cols_outlet)]
+head(outlet)
+```
+
+```{r}
+#summary(lg_west)
+
+drop_cols_west <- c("Stage_Water_CS451","Temperature_Water_CS451","Chla_Water_EXO","Flow_Water_SL","Level_Water_SL","PC_Water_EXO","Temperature_Water_SL","Conductivity.46cm_Soil_HydraProbe","Moisture.46cm_Soil_HydraProbe","Temperature.46cm_Soil_HydraProbe","Time","X","X.1")
+
+west <- lg_west[,!(names(lg_west) %in% drop_cols_west)]
+head(west)
+```
+
+Some exploratory analysis of the variables we are interested in
+```{r}
+boxplot(west$Chloride_Water_EXO, main="Boxplot of Chlorides for West")
+boxplot(west$pH_Water_EXO, main="Boxplot of pH for West")
+boxplot(west$Temperature_Water_EXO, main="Boxplot of Water Temp for West")
+```
+```{r}
+boxplot(east$Chloride_Water_EXO, main = "Boxplot of chlorides for East")
+boxplot(east$pH_Water_EXO, main="Boxplot of pH for East")
+boxplot(east$Temperature_Water_EXO, main="Boxplot of Water Temp for East")
+```
+```{r}
+boxplot(outlet$Chla_Water_EXO,main="Boxplot of Chlorides for Outlet")
+boxplot(outlet$pH_Water_EXO, main="Boxplot of pH for Outlet")
+boxplot(outlet$Temperature_Water_EXO, main="Boxplot of Water Temp for Outlet")
+```
+
+Now we can look into the nasa precipitation data
+
+```{r}
+tail(precip_data)
+```
+
+Have a small problem where the datasets are not exactly the same size for some reason.
+West and outlet are only missing one row, but west is missing 20 rows
+  Fixed this issue in excel by adding some NA rows
+  
+  
+Need to add the precipitation values from the four different areas in the bounding box
+Need to do this for all three sensors
+```{r}
+east$sw_precip <- sw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+east$se_precip <- se_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+east$nw_precip <- nw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+east$ne_precip <- ne_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+```
+
+```{r}
+outlet$sw_precip <- sw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+outlet$se_precip <- se_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+outlet$nw_precip <- nw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+outlet$ne_precip <- ne_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+```
+
+```{r}
+west$sw_precip <- sw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+west$se_precip <- se_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+west$nw_precip <- nw_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+west$ne_precip <- ne_precip_data$mean_NLDAS_FORA0125_H_2_0_Rainf
+```
+
+
+Going to export the east, outlet, west to csv so I can use them in python
+```{r}
+write.csv(east, file="C:\\Users\\matkij\\Documents\\ITWS 6600 Data Analytics\\east.csv")
+write.csv(outlet,file= "C:\\Users\\matkij\\Documents\\ITWS 6600 Data Analytics\\outlet.csv")
+write.csv(west, file="C:\\Users\\matkij\\Documents\\ITWS 6600 Data Analytics\\west.csv")
+```
+
+Now we can start to construct regression models to predict lake health based on 
+  rain in the different quadrants
+  
+```{r}
+# Linear regression for chlorides in east
+east_chlr_lm <- lm(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=east)
+summary(east_chlr_lm)
+```
+```{r}
+# Linear regression for water pH in east
+east_ph_lm <- lm(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=east)
+summary(east_ph_lm)
+```
+```{r}
+# Linear regression for water temperature in east
+east_temp_lm <- lm(Temperature_Water_EXO~ sw_precip + se_precip + nw_precip + ne_precip,data=east)
+summary(east_temp_lm)
+```
+```{r}
+# Linear regression for chlorides in outlet
+outlet_chlr_lm <- lm(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=outlet)
+summary(outlet_chlr_lm)
+```
+```{r}
+outlet_ph_lm <- lm(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=outlet)
+summary(outlet_ph_lm)
+```
+```{r}
+outlet_temp_lm <- lm(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=outlet)
+summary(outlet_temp_lm)
+```
+```{r}
+west_chlr_lm <- lm(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=west)
+summary(west_chlr_lm)
+```
+```{r}
+west_ph_lm <- lm(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=west)
+summary(west_ph_lm)
+```
+```{r}
+west_temp_lm <- lm(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip,data=west)
+summary(west_temp_lm)
+```
+
+Looking at the same regression but with decision trees
+```{r}
+# Decision tree regression
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+```
+
+```{r}
+# East analysis
+east$id <- 1:nrow(east)
+east_tree_train <- east %>% dplyr::sample_frac(0.7)
+east_tree_test <- dplyr::anti_join(east,east_tree_train,by="id")
+
+# Create decision tree model for chlorides for east sensor
+east_chlr_tree <- rpart(Chloride_Water_EXO ~ se_precip + sw_precip + ne_precip + nw_precip, data=east_tree_train, method="anova")
+
+# Create decision tree model for pH for east sensor
+east_ph_tree <- rpart(pH_Water_EXO ~ se_precip + sw_precip + ne_precip + nw_precip,data=east_tree_train, method="anova")
+
+# Create decision tree model for water temperature for east sensor
+east_temp_tree <- rpart(Temperature_Water_EXO ~ se_precip + sw_precip + ne_precip + nw_precip,data=east_tree_train,method="anova")
+```
+
+Now need to create the same models for the Outlet and West sensors
+
+```{r}
+outlet$id <- 1:nrow(outlet)
+outlet_tree_train <- outlet %>% dplyr::sample_frac(0.7)
+outlet_tree_test <- dplyr::anti_join(outlet,outlet_tree_train, by="id")
+
+# Create decision tree model for chlorides for outlet sensor
+outlet_chlr_tree <- rpart(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=outlet_tree_train,method="anova")
+
+# Create decision tree model for pH for outlet sensor
+outlet_ph_tree <- rpart(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=outlet_tree_train,method="anova")
+
+# Create decision tree model for water temperature for outlet sensor
+outlet_temp_tree <- rpart(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=outlet_tree_train,method="anova")
+```
+
+Same code chunk for West sensor
+
+```{r}
+west$id <- 1:nrow(west)
+west_tree_train <- west %>% dplyr::sample_frac(0.7)
+west_tree_test <- dplyr::anti_join(west,west_tree_train,by="id")
+
+# Create decision tree model for chlorides for west
+west_chlr_tree <- rpart(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=west_tree_train,method="anova")
+
+# Create decision tree model for pH for west
+west_ph_tree <- rpart(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=west_tree_train, method="anova")
+
+# Create decision tree model for water temperature for west
+west_temp_tree <- rpart(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=west_tree_train, method="anova")
+```
+
+Now that I have all the decision tree models, I need to apply them to the test data
+
+```{r}
+# East
+
+# East Chlorides
+east_chlr_test <- predict(east_chlr_tree,east_tree_test,type="vector")
+rpart.plot(east_chlr_tree, main="Decision Tree for East Chlorides")
+head(east_chlr_test)
+
+# East pH
+east_ph_test <- predict(east_ph_tree, east_tree_test, type="vector")
+rpart.plot(east_ph_tree, main="Decision Tree for East pH")
+head(east_ph_test)
+
+# East Temperature
+east_temp_test <- predict(east_temp_tree, east_tree_test, type="vector")
+rpart.plot(east_temp_tree, main="Decision Tree for East Temperature")
+head(east_temp_test)
+```
+
+```{r}
+# Outlet
+
+# Outlet Chlorides
+outlet_chlr_test <- predict(outlet_chlr_tree, outlet_tree_test, type="vector")
+rpart.plot(outlet_chlr_tree,main="Decision Tree for Outlet Chlorides")
+head(outlet_chlr_test)
+
+# Outlet pH
+outlet_ph_test <- predict(outlet_ph_tree,outlet_tree_test,type="vector")
+rpart.plot(outlet_ph_tree,main="Decision Tree for Outlet pH")
+head(outlet_ph_test)
+
+# Outlet Temperature
+outlet_temp_test <- predict(outlet_temp_tree,outlet_tree_test,type="vector")
+rpart.plot(outlet_temp_tree,main="Decision Tree for Outlet Temperature")
+head(outlet_temp_test)
+```
+
+```{r}
+# West
+
+# West Chlorides
+west_chlr_test <- predict(west_chlr_tree,west_tree_test,type="vector")
+rpart.plot(west_chlr_tree,main="Decision Tree for West Chlorides")
+head(west_chlr_test)
+
+# West pH
+west_ph_test <- predict(west_ph_tree,west_tree_test,type="vector")
+rpart.plot(west_ph_tree,main="Decision Tree for West pH")
+head(west_ph_test)
+
+# West Temperature
+west_temp_test <- predict(west_temp_tree,west_tree_test,type="vector")
+rpart.plot(west_temp_tree,main="Decision Tree for West Temperature")
+head(west_temp_test)
+```
+
+The next model is a random forest model. We will look to compare the results from the
+decision tree model to the random forest one. Luckily we should be able to use the same
+data as the decision tree model.
+
+```{r}
+library(randomForest)
+
+# Create random forest model for chlorides for east sensor
+east_rf_chlr <- randomForest(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=east_tree_train,importance=TRUE,type="regression", na.action=na.omit)
+# Plot one of the trees from the forest
+getTree(east_rf_chlr,k=1,labelVar = TRUE)
+
+# Create random forest model for pH for east sensor
+east_rf_ph <- randomForest(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=east_tree_train,importance=TRUE,type="regression", na.action=na.omit)
+# Plot one of the trees from the forest
+getTree(east_rf_ph,k=1,labelVar=TRUE)
+
+# Create random forest model for temperature for east sensor
+east_rf_temp <- randomForest(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=east_tree_train, importance=TRUE,type="regression",na.action=na.omit)
+# Plot one of the trees from the forest
+getTree(east_rf_temp,k=1,labelVar=TRUE)
+
+```
+
+Create the models for the outlet sensor
+
+```{r}
+# Create random forest model for chlorides for outlet
+outlet_rf_chlr <- randomForest(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=outlet_tree_train,importance=TRUE,type="regression",na.action=na.omit)
+# Plot one of the trees
+getTree(outlet_rf_chlr,k=1,labelVar=TRUE)
+
+# Create random forest model for pH for outlet
+outlet_rf_ph <- randomForest(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=outlet_tree_train,importance=TRUE,type="regression",na.action=na.omit)
+# Plot one of the trees
+getTree(outlet_rf_ph,k=1,labelVar=TRUE)
+
+# Create random forest model for temperature for outlet
+outlet_rf_temp <- randomForest(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=outlet_tree_train,importance=TRUE,type="regression",na.action=na.omit)
+# Plot one of the trees
+getTree(outlet_rf_temp, k=1, labelVar=TRUE)
+```
+
+Create the models for the east sensor
+
+```{r}
+# Create random forest model for chlorides for west
+west_rf_chlr <- randomForest(Chloride_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=west_tree_train,importance=TRUE,type="regression",na.action=na.omit)
+# Plot one tree from the forest
+getTree(west_rf_chlr,k=1,labelVar=TRUE)
+
+# Create random forest model for pH for west
+west_rf_ph <- randomForest(pH_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=west_tree_train,importance=TRUE,type="regression",na.action=na.omit)
+# Plot a tree from the forest
+getTree(west_rf_ph, k=1,labelVar=TRUE)
+
+# Create random forest model for temperature for west
+west_rf_temp <- randomForest(Temperature_Water_EXO ~ sw_precip + se_precip + nw_precip + ne_precip, data=west_tree_train,importance=TRUE,type="regression",na.action=na.omit)
+# Plot a tree
+getTree(west_rf_temp,k=1,labelVar=TRUE)
+```
+For the last model, we will use KNN regression to predict the three variables
+
+```{r}
+# KNN for East
+library(caTools)
+library(class)
+# Create new train and test sets due to knn function limitations
+east_knn_train <- na.omit(east_tree_train)
+east_knn_test <- na.omit(east_tree_test)
+
+# Create predictors data frames so we only use the precipitation data
+east_predictors_train <- data.frame(east_knn_train$nw_precip,east_knn_train$ne_precip,east_knn_train$sw_precip,east_knn_train$se_precip)
+east_predictors_test <- data.frame(east_knn_test$nw_precip,east_knn_test$ne_precip,east_knn_test$sw_precip,east_knn_test$se_precip)
+
+# East chlorides
+east_knn_chlr <- knn(east_predictors_train,east_predictors_test,cl=east_knn_train$Chloride_Water_EXO,k=1)
+# Create a data frame to house the results
+east_knn_df <- data.frame(chlr_pred=east_knn_chlr,chlr_true=east_knn_test$Chloride_Water_EXO)
+
+# East pH
+east_knn_ph <- knn(east_predictors_train,east_predictors_test,cl=east_knn_train$pH_Water_EXO,k=1)
+east_knn_df$ph_pred <- east_knn_ph
+east_knn_df$ph_true <- east_knn_test$pH_Water_EXO
+
+# East Temperature
+east_knn_temp <- knn(east_predictors_train,east_predictors_test,cl=east_knn_train$Temperature_Water_EXO,k=1)
+east_knn_df$temp_pred <- east_knn_temp
+east_knn_df$temp_true <- east_knn_test$Temperature_Water_EXO
+```
+
+```{r}
+# KNN for Outlet
+library(caTools)
+library(class)
+
+# Create new train and test sets due to knn function limitation
+outlet_knn_train <- na.omit(outlet_tree_train)
+outlet_knn_test <- na.omit(outlet_tree_test)
+
+# Create predictors data frames so we only use the precipitation data
+outlet_predictors_train <- data.frame(outlet_knn_train$nw_precip,outlet_knn_train$ne_precip,outlet_knn_train$sw_precip,outlet_knn_train$se_precip)
+outlet_predictors_test <- data.frame(outlet_knn_test$nw_precip,outlet_knn_test$ne_precip,outlet_knn_test$sw_precip,outlet_knn_test$se_precip)
+
+# Outlet chlorides
+outlet_knn_chlr <- knn(outlet_predictors_train,outlet_predictors_test,cl=outlet_knn_train$Chloride_Water_EXO,k=4)
+# Create a data frame to house the results
+outlet_knn_df <- data.frame(chlr_pred=outlet_knn_chlr,chlr_true=outlet_knn_test$Chloride_Water_EXO)
+
+# Outlet pH
+outlet_knn_ph <- knn(outlet_predictors_train,outlet_predictors_test,cl=outlet_knn_train$pH_Water_EXO,k=4)
+outlet_knn_df$ph_pred <- outlet_knn_ph
+outlet_knn_df$ph_true <- outlet_knn_test$pH_Water_EXO
+
+# Outlet Temperature
+outlet_knn_temp <- knn(outlet_predictors_train,outlet_predictors_test,cl=outlet_knn_train$Temperature_Water_EXO,k=4)
+outlet_knn_df$temp_pred <- outlet_knn_temp
+outlet_knn_df$temp_true <- outlet_knn_test$Temperature_Water_EXO
+```
+
+```{r}
+# KNN for West
+library(caTools)
+library(class)
+
+# Create new train and test sets due to knn function limitation
+west_knn_train <- na.omit(west_tree_train)
+west_knn_test <- na.omit(west_tree_test)
+
+# Create predictors data frames so we only use the precipitation data
+west_predictors_train <- data.frame(west_knn_train$nw_precip,west_knn_train$ne_precip,west_knn_train$sw_precip,west_knn_train$se_precip)
+west_predictors_test <- data.frame(west_knn_test$nw_precip,west_knn_test$ne_precip,west_knn_test$sw_precip,west_knn_test$se_precip)
+
+# West chlorides
+west_knn_chlr <- knn(west_predictors_train,west_predictors_test,cl=west_knn_train$Chloride_Water_EXO,k=2)
+# Create a data frame to house the results
+west_knn_df <- data.frame(chlr_pred=west_knn_chlr,chlr_true=west_knn_test$Chloride_Water_EXO)
+
+# West pH
+west_knn_ph <- knn(west_predictors_train,west_predictors_test,cl=west_knn_train$pH_Water_EXO,k=2)
+west_knn_df$ph_pred <- west_knn_ph
+west_knn_df$ph_true <- west_knn_test$pH_Water_EXO
+
+# West Temperature
+west_knn_temp <- knn(west_predictors_train,west_predictors_test,cl=west_knn_train$Temperature_Water_EXO,k=2)
+west_knn_df$temp_pred <- west_knn_temp
+west_knn_df$temp_true <- west_knn_test$Temperature_Water_EXO
+```
+
+
+Need to predict the values in test
+Plot residuals in predictions vs actual
+  for i in 1:nrow(df):
+    res = df_test[i] - prediction[i]
+    res_list.append(res)
+  plot(res)
+
+
+Now to evaluate the models based on error between predicted and actual values
+
+```{r}
+# Predict using multiple regression for east
+
+# East chlorides
+east_pred_chlr_lm <- predict(east_chlr_lm,east_tree_test)
+east_lm_df <- data.frame(east_pred_chlr_lm,east_tree_test$Chloride_Water_EXO)
+
+# East pH
+east_pred_ph_lm <- predict(east_ph_lm,east_tree_test)
+east_lm_df$true_ph <- east_tree_test$pH_Water_EXO
+east_lm_df$ph_pred <- east_pred_ph_lm
+
+# East Temperature
+east_pred_temp <- predict(east_temp_lm,east_tree_test)
+east_lm_df$true_temp <- east_tree_test$Temperature_Water_EXO
+east_lm_df$temp_pred <- east_pred_temp
+
+# Get rid on any na values
+east_lm_df <- na.omit(east_lm_df)
+
+east_chlr_lm_mse <- mean((east_lm_df$east_pred_chlr_lm - east_lm_df$east_tree_test.Chloride_Water_EXO)^2)
+east_ph_lm_mse <- mean((east_lm_df$ph_pred - east_lm_df$true_ph)^2)
+east_temp_lm_mse <- mean((east_lm_df$temp_pred - east_lm_df$true_temp)^2)
+
+# See the mse values
+east_chlr_lm_mse
+east_ph_lm_mse
+east_temp_lm_mse
+```
+
+```{r}
+# Predict using multiple regression for outlet
+
+# Outlet chlorides
+outlet_pred_chlr_lm <- predict(outlet_chlr_lm,outlet_tree_test)
+outlet_lm_df <- data.frame(outlet_pred_chlr_lm,outlet_tree_test$Chloride_Water_EXO)
+
+# East pH
+outlet_pred_ph_lm <- predict(outlet_ph_lm,outlet_tree_test)
+outlet_lm_df$true_ph <- outlet_tree_test$pH_Water_EXO
+outlet_lm_df$ph_pred <- outlet_pred_ph_lm
+
+# East Temperature
+outlet_pred_temp <- predict(outlet_temp_lm,outlet_tree_test)
+outlet_lm_df$true_temp <- outlet_tree_test$Temperature_Water_EXO
+outlet_lm_df$temp_pred <- outlet_pred_temp
+
+# Get rid on any na values
+outlet_lm_df <- na.omit(outlet_lm_df)
+# Calculate mse values
+outlet_chlr_lm_mse <- mean((outlet_lm_df$outlet_pred_chlr_lm - outlet_lm_df$outlet_tree_test.Chloride_Water_EXO)^2)
+outlet_ph_lm_mse <- mean((outlet_lm_df$ph_pred - outlet_lm_df$true_ph)^2)
+outlet_temp_lm_mse <- mean((outlet_lm_df$temp_pred - outlet_lm_df$true_temp)^2)
+
+# See the mse values
+outlet_chlr_lm_mse
+outlet_ph_lm_mse
+outlet_temp_lm_mse
+```
+
+```{r}
+# Predict using multiple regression for west
+
+# Outlet chlorides
+west_pred_chlr_lm <- predict(west_chlr_lm,west_tree_test)
+west_lm_df <- data.frame(west_pred_chlr_lm,west_tree_test$Chloride_Water_EXO)
+
+# East pH
+west_pred_ph_lm <- predict(west_ph_lm,west_tree_test)
+west_lm_df$true_ph <- west_tree_test$pH_Water_EXO
+west_lm_df$ph_pred <- west_pred_ph_lm
+
+# East Temperature
+west_pred_temp <- predict(west_temp_lm,west_tree_test)
+west_lm_df$true_temp <- west_tree_test$Temperature_Water_EXO
+west_lm_df$temp_pred <- west_pred_temp
+
+# Get rid on any na values
+west_lm_df <- na.omit(west_lm_df)
+# Calculate mse values
+west_chlr_lm_mse <- mean((west_lm_df$west_pred_chlr_lm - west_lm_df$west_tree_test.Chloride_Water_EXO)^2)
+west_ph_lm_mse <- mean((west_lm_df$ph_pred - west_lm_df$true_ph)^2)
+west_temp_lm_mse <- mean((west_lm_df$temp_pred - west_lm_df$true_temp)^2)
+
+# See the mse values
+west_chlr_lm_mse
+west_ph_lm_mse
+west_temp_lm_mse
+```
+
+Now need to do the same process for decision tree models
+```{r}
+# Decision tree analysis for East
+# East chlorides
+east_pred_chlr_dt <- predict(east_chlr_tree,east_tree_test)
+east_dt_df <- data.frame(pred_chlr=east_pred_chlr_dt, true_chlr=east_tree_test$Chloride_Water_EXO)
+
+# East pH
+east_pred_ph_dt <- predict(east_ph_tree,east_tree_test)
+east_dt_df$pred_ph <- east_pred_ph_dt
+east_dt_df$true_ph <- east_tree_test$pH_Water_EXO
+
+# East temperature
+east_pred_temp_dt <- predict(east_temp_tree,east_tree_test)
+east_dt_df$pred_temp <- east_pred_temp_dt
+east_dt_df$true_temp <- east_tree_test$Temperature_Water_EXO
+
+east_dt_df <- na.omit(east_dt_df)
+
+# Calculate the mse
+east_chlr_dt_mse <- mean((east_dt_df$pred_chlr - east_dt_df$true_chlr)^2)
+east_ph_dt_mse <- mean((east_dt_df$pred_ph - east_dt_df$true_ph)^2)
+east_temp_dt_mse <- mean((east_dt_df$pred_temp - east_dt_df$true_temp)^2)
+
+# See the mse values
+east_chlr_dt_mse
+east_ph_dt_mse
+east_temp_dt_mse
+```
+
+```{r}
+# Decision tree analysis for Outlet
+# Outlet chlorides
+outlet_pred_chlr_dt <- predict(outlet_chlr_tree,outlet_tree_test)
+outlet_dt_df <- data.frame(pred_chlr=outlet_pred_chlr_dt, true_chlr=outlet_tree_test$Chloride_Water_EXO)
+
+# Outlet pH
+outlet_pred_ph_dt <- predict(outlet_ph_tree,outlet_tree_test)
+outlet_dt_df$pred_ph <- outlet_pred_ph_dt
+outlet_dt_df$true_ph <- outlet_tree_test$pH_Water_EXO
+
+# Outlet temperature
+outlet_pred_temp_dt <- predict(outlet_temp_tree,outlet_tree_test)
+outlet_dt_df$pred_temp <- outlet_pred_temp_dt
+outlet_dt_df$true_temp <- outlet_tree_test$Temperature_Water_EXO
+
+outlet_dt_df <- na.omit(outlet_dt_df)
+
+# Calculate the mse
+outlet_chlr_dt_mse <- mean((outlet_dt_df$pred_chlr - outlet_dt_df$true_chlr)^2)
+outlet_ph_dt_mse <- mean((outlet_dt_df$pred_ph - outlet_dt_df$true_ph)^2)
+outlet_temp_dt_mse <- mean((outlet_dt_df$pred_temp - outlet_dt_df$true_temp)^2)
+
+# See the mse values
+outlet_chlr_dt_mse
+outlet_ph_dt_mse
+outlet_temp_dt_mse
+```
+
+
+```{r}
+# Decision tree analysis for West
+# West chlorides
+west_pred_chlr_dt <- predict(west_chlr_tree,west_tree_test)
+west_dt_df <- data.frame(pred_chlr=west_pred_chlr_dt, true_chlr=west_tree_test$Chloride_Water_EXO)
+
+# West pH
+west_pred_ph_dt <- predict(west_ph_tree,west_tree_test)
+west_dt_df$pred_ph <- west_pred_ph_dt
+west_dt_df$true_ph <- west_tree_test$pH_Water_EXO
+
+# West temperature
+west_pred_temp_dt <- predict(west_temp_tree,west_tree_test)
+west_dt_df$pred_temp <- west_pred_temp_dt
+west_dt_df$true_temp <- west_tree_test$Temperature_Water_EXO
+
+west_dt_df <- na.omit(west_dt_df)
+
+# Calculate the mse
+west_chlr_dt_mse <- mean((west_dt_df$pred_chlr - west_dt_df$true_chlr)^2)
+west_ph_dt_mse <- mean((west_dt_df$pred_ph - west_dt_df$true_ph)^2)
+west_temp_dt_mse <- mean((west_dt_df$pred_temp - west_dt_df$true_temp)^2)
+
+# See the mse values
+west_chlr_dt_mse
+west_ph_dt_mse
+west_temp_dt_mse
+```
+
+Now to random forest analysis
+
+```{r}
+# Random forest analysis for East
+
+# East Chlorides
+east_pred_chlr_rf <- predict(east_rf_chlr,east_tree_test)
+east_rf_df <- data.frame(pred_chlr=east_pred_chlr_rf,true_chlr = east_tree_test$Chloride_Water_EXO)
+
+# East pH
+east_pred_ph_rf <- predict(east_rf_ph,east_tree_test)
+east_rf_df$pred_ph <- east_pred_ph_rf
+east_rf_df$true_ph <- east_tree_test$pH_Water_EXO
+
+# East Temperature
+east_pred_temp_rf <- predict(east_rf_temp,east_tree_test)
+east_rf_df$pred_temp <- east_pred_temp_rf
+east_rf_df$true_temp <- east_tree_test$Temperature_Water_EXO
+
+east_rf_df <- na.omit(east_rf_df)
+
+# Calculate the mse
+east_chlr_rf_mse <- mean((east_rf_df$pred_chlr - east_rf_df$true_chlr)^2)
+east_ph_rf_mse <- mean((east_rf_df$pred_ph - east_rf_df$true_ph)^2)
+east_temp_rf_mse <- mean((east_rf_df$pred_temp - east_rf_df$true_temp)^2)
+
+# See the mse values
+east_chlr_rf_mse
+east_ph_rf_mse
+east_temp_rf_mse
+```
+```{r}
+# Random forest analysis for Outlet
+
+# Outlet Chlorides
+outlet_pred_chlr_rf <- predict(outlet_rf_chlr,outlet_tree_test)
+outlet_rf_df <- data.frame(pred_chlr=outlet_pred_chlr_rf,true_chlr = outlet_tree_test$Chloride_Water_EXO)
+
+# Outlet pH
+outlet_pred_ph_rf <- predict(outlet_rf_ph,outlet_tree_test)
+outlet_rf_df$pred_ph <- outlet_pred_ph_rf
+outlet_rf_df$true_ph <- outlet_tree_test$pH_Water_EXO
+
+# Outlet Temperature
+outlet_pred_temp_rf <- predict(outlet_rf_temp,outlet_tree_test)
+outlet_rf_df$pred_temp <- outlet_pred_temp_rf
+outlet_rf_df$true_temp <- outlet_tree_test$Temperature_Water_EXO
+
+outlet_rf_df <- na.omit(outlet_rf_df)
+
+# Calculate the mse
+outlet_chlr_rf_mse <- mean((outlet_rf_df$pred_chlr - outlet_rf_df$true_chlr)^2)
+outlet_ph_rf_mse <- mean((outlet_rf_df$pred_ph - outlet_rf_df$true_ph)^2)
+outlet_temp_rf_mse <- mean((outlet_rf_df$pred_temp - outlet_rf_df$true_temp)^2)
+
+# See the mse values
+outlet_chlr_rf_mse
+outlet_ph_rf_mse
+outlet_temp_rf_mse
+```
+
+
+```{r}
+# Random forest analysis for West
+
+# West Chlorides
+west_pred_chlr_rf <- predict(west_rf_chlr,west_tree_test)
+west_rf_df <- data.frame(pred_chlr=west_pred_chlr_rf,true_chlr = west_tree_test$Chloride_Water_EXO)
+
+# West pH
+west_pred_ph_rf <- predict(west_rf_ph,west_tree_test)
+west_rf_df$pred_ph <- west_pred_ph_rf
+west_rf_df$true_ph <- west_tree_test$pH_Water_EXO
+
+# West Temperature
+west_pred_temp_rf <- predict(west_rf_temp,west_tree_test)
+west_rf_df$pred_temp <- west_pred_temp_rf
+west_rf_df$true_temp <- west_tree_test$Temperature_Water_EXO
+
+west_rf_df <- na.omit(west_rf_df)
+
+# Calculate the mse
+west_chlr_rf_mse <- mean((west_rf_df$pred_chlr - west_rf_df$true_chlr)^2)
+west_ph_rf_mse <- mean((west_rf_df$pred_ph - west_rf_df$true_ph)^2)
+west_temp_rf_mse <- mean((west_rf_df$pred_temp - west_rf_df$true_temp)^2)
+
+# See the mse values
+west_chlr_rf_mse
+west_ph_rf_mse
+west_temp_rf_mse
+```
+KNN Analysis
+
+```{r}
+# Knn analysis for East
+
+# East chlorides
+east_chlr_knn_mse <- mean((as.numeric(as.character(east_knn_df$chlr_pred)) - as.numeric(as.character(east_knn_df$chlr_true)))^2)
+# East pH
+east_ph_knn_mse <- mean((as.numeric(as.character(east_knn_df$ph_pred)) - as.numeric(as.character(east_knn_df$ph_true)))^2)
+# East temperature
+east_temp_knn_mse <- mean((as.numeric(as.character(east_knn_df$temp_pred)) - as.numeric(as.character(east_knn_df$temp_true)))^2)
+
+# See the mse
+east_chlr_knn_mse
+east_ph_knn_mse
+east_temp_knn_mse
+```
+```{r}
+# Knn analysis for Outlet
+
+# Outlet chlorides
+outlet_chlr_knn_mse <- mean((as.numeric(as.character(outlet_knn_df$chlr_pred)) - as.numeric(as.character(outlet_knn_df$chlr_true)))^2)
+# Outlet pH
+outlet_ph_knn_mse <- mean((as.numeric(as.character(outlet_knn_df$ph_pred)) - as.numeric(as.character(outlet_knn_df$ph_true)))^2)
+# East temperature
+outlet_temp_knn_mse <- mean((as.numeric(as.character(outlet_knn_df$temp_pred)) - as.numeric(as.character(outlet_knn_df$temp_true)))^2)
+
+# See the mse
+outlet_chlr_knn_mse
+outlet_ph_knn_mse
+outlet_temp_knn_mse
+```
+```{r}
+# Knn analysis for West
+
+# West chlorides
+west_chlr_knn_mse <- mean((as.numeric(as.character(west_knn_df$chlr_pred)) - as.numeric(as.character(west_knn_df$chlr_true)))^2)
+# East pH
+west_ph_knn_mse <- mean((as.numeric(as.character(west_knn_df$ph_pred)) - as.numeric(as.character(west_knn_df$ph_true)))^2)
+# East temperature
+west_temp_knn_mse <- mean((as.numeric(as.character(west_knn_df$temp_pred)) - as.numeric(as.character(west_knn_df$temp_true)))^2)
+
+# See the mse
+west_chlr_knn_mse
+west_ph_knn_mse
+west_temp_knn_mse
+```
+
